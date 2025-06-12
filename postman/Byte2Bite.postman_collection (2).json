@@ -1,0 +1,341 @@
+{
+	"info": {
+		"_postman_id": "d9449328-4476-4162-98fe-2eaaac142f6d",
+		"name": "Byte2Bite",
+		"description": "fyp",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "28551029"
+	},
+	"item": [
+		{
+			"name": "auth",
+			"item": [
+				{
+					"name": "login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "email",
+									"value": "sheri@byte2bite.com",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "password",
+									"value": "zxc123",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "sheri@byte2bite.x",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "email",
+									"value": "shehrozm107@gmail.com",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "register",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "email",
+									"value": "sheri@byte2bite.x",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "zxc123",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "refresh-tokens",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "email",
+									"value": "sheri@byte2bite.com",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "zxc123",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/refresh-tokens",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"refresh-tokens"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "logout",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "email",
+									"value": "sheri@byte2bite.com123",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "zxc123",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "dasboard",
+			"item": [
+				{
+					"name": "overview",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/dashboard/overview",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"dashboard",
+								"overview"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "user",
+			"item": [
+				{
+					"name": "complete-profile",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \r\n    \"role\": \"contributor\",\r\n    \"basicInfo\": {\r\n        \"name\": \"John Doe\",\r\n        \"profilePicture\": \"https://example.com/profile.jpg\",\r\n        \"contact\": \"+1234567890\",\r\n        \"alternateContact\": \"+0987654321\"\r\n    },\r\n    \"address\": {\r\n        \"country\": \"USA\",\r\n        \"state\": \"California\",\r\n        \"city\": \"Los Angeles\",\r\n        \"zipCode\": \"90001\",\r\n        \"fullAddress\": \"123 Main St, Los Angeles, CA 90001\",\r\n        \"coordinates\": {\r\n            \"latitude\": 34.0522,\r\n            \"longitude\": -118.2437\r\n        }\r\n    },\r\n    \"additionalDetails\": {\r\n        \"description\": \"A brief description about the user.\"\r\n    },\r\n    \"ngoSpecific\": {\r\n        \"ngoDetails\": {\r\n            \"registrationNumber\": \"123456789\",\r\n            \"ntnNumber\": \"987654321\",\r\n            \"certificateURL\": \"https://example.com/certificate.jpg\"\r\n        }\r\n    }\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/user/complete-profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"user",
+								"complete-profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "upload-Profilepic",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "profilePicture",
+									"type": "file",
+									"src": "/G:/data docx/id/IMG_20221208_150922_905.jpg"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/user/upload/profilePicture",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"user",
+								"upload",
+								"profilePicture"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "otp",
+			"item": [
+				{
+					"name": "getOTP",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "email",
+									"value": "sheri@byte2bite.com",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "password",
+									"value": "zxc123",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "method",
+									"value": "sms",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "method",
+									"value": "email",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/otp/getOTP",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"otp",
+								"getOTP"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "verifyOTP",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "email",
+									"value": "sheri@byte2bite.com",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "password",
+									"value": "zxc123",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "otp",
+									"value": "324112",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/otp/verifyOTP",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"otp",
+								"verifyOTP"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,217 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authService } from '../services/authService';
+import { otpService } from '../services/otpService';
+import type { User, LoginCredentials, RegisterData } from '../types';
+
+interface AuthContextType {
+  user: User | null;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  register: (data: RegisterData) => Promise<{ requiresVerification?: boolean; message?: string }>;
+  logout: () => Promise<void>;
+  updateUser: (user: User) => void;
+  completeProfile: (profileData: any) => Promise<User>;
+  uploadProfilePicture: (file: File) => Promise<{ profilePictureUrl: string }>;
+  getDashboardOverview: () => Promise<any>;
+  sendOTP: (email: string) => Promise<void>;
+  verifyOTP: (email: string, otp: string) => Promise<{ user?: User; tokens?: any }>;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        if (authService.isAuthenticated()) {
+          const currentUser = await authService.getCurrentUser();
+          setUser(currentUser);
+        }
+      } catch (error) {
+        console.error('Failed to initialize auth:', error);
+        // Clear invalid tokens
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('byte2bite_current_user');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
+  const login = async (credentials: LoginCredentials): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const { user: loggedInUser } = await authService.login(credentials);
+      setUser(loggedInUser);
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (data: RegisterData): Promise<{ requiresVerification?: boolean; message?: string }> => {
+    try {
+      setIsLoading(true);
+      const result = await authService.register(data);
+      
+      if (result.requiresVerification) {
+        // Don't set user yet - they need to verify email first
+        return { 
+          requiresVerification: true,
+          message: result.message 
+        };
+      } else if (result.user) {
+        // If no verification required, set user
+        // Ensure isVerified is explicitly set based on backend response or assumed false
+        const newUser = { ...result.user, isVerified: result.user.isVerified ?? false };
+        setUser(newUser);
+        localStorage.setItem('byte2bite_current_user', JSON.stringify(newUser));
+        return {};
+      }
+      
+      return { requiresVerification: true };
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setUser(null);
+    }
+  };
+
+  const updateUser = (updatedUser: User): void => {
+    setUser(updatedUser);
+  };
+
+  const completeProfile = async (profileData: any): Promise<User> => {
+    try {
+      const updatedUser = await authService.completeProfile(profileData);
+      // Add profileCompleted flag to the user object
+      const userWithProfileCompleted = { ...updatedUser, profileCompleted: true };
+      setUser(userWithProfileCompleted);
+      localStorage.setItem('byte2bite_current_user', JSON.stringify(userWithProfileCompleted));
+      return userWithProfileCompleted;
+    } catch (error) {
+      console.error('Complete profile failed:', error);
+      throw error;
+    }
+  };
+
+  const uploadProfilePicture = async (file: File): Promise<{ profilePictureUrl: string }> => {
+    try {
+      const result = await authService.uploadProfilePicture(file);
+      
+      // Update user with new profile picture
+      if (user) {
+        const updatedUser = { ...user, avatar: result.profilePictureUrl };
+        setUser(updatedUser);
+        localStorage.setItem('byte2bite_current_user', JSON.stringify(updatedUser));
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Upload profile picture failed:', error);
+      throw error;
+    }
+  };
+
+  const getDashboardOverview = async (): Promise<any> => {
+    try {
+      return await authService.getDashboardOverview();
+    } catch (error) {
+      console.error('Get dashboard overview failed:', error);
+      throw error;
+    }
+  };
+
+  const sendOTP = async (email: string): Promise<void> => {
+    try {
+      // Note: Based on your backend, OTP requires authentication
+      // This might need to be adjusted based on your actual flow
+      // For email verification during registration, you might need a different endpoint
+      await otpService.sendOTP({ email, method: 'email' });
+    } catch (error) {
+      console.error('Send OTP failed:', error);
+      throw error;
+    }
+  };
+
+  const verifyOTP = async (email: string, otp: string): Promise<{ user?: User; tokens?: any }> => {
+    try {
+      const result = await otpService.verifyOTP({ email, otp });
+      
+      if (result.data && result.data.user) {
+        const { user: verifiedUser, accessToken, refreshToken } = result.data;
+        
+        // Explicitly set isVerified to true upon successful OTP verification
+        const finalUser = { ...verifiedUser, isVerified: true };
+
+        // Store tokens
+        localStorage.setItem('accessToken', accessToken);
+        if (refreshToken) {
+          localStorage.setItem('refreshToken', refreshToken);
+        }
+        localStorage.setItem('byte2bite_current_user', JSON.stringify(finalUser));
+        
+        setUser(finalUser);
+        
+        return {
+          user: finalUser,
+          tokens: { accessToken, refreshToken }
+        };
+      }
+      
+      return {};
+    } catch (error) {
+      console.error('Verify OTP failed:', error);
+      throw error;
+    }
+  };
+
+  const value = {
+    user,
+    login,
+    register,
+    logout,
+    updateUser,
+    completeProfile,
+    uploadProfilePicture,
+    getDashboardOverview,
+    sendOTP,
+    verifyOTP,
+    isLoading,
+    isAuthenticated: !!user,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
