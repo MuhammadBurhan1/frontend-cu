@@ -1,5 +1,5 @@
 import { apiClient, handleApiError } from '../utils/api';
-import type { User, AuthTokens, LoginCredentials, RegisterData, ProfileUpdateData } from '../types';
+import type { User, AuthTokens, LoginCredentials, RegisterData, ProfileUpdateData, ProfileData, UploadResponse, ProfileResponse } from '../types';
 
 export interface AuthResponse {
   user: User;
@@ -14,32 +14,19 @@ export interface VerificationResponse {
 }
 
 export class AuthService {
-  async login(credentials: LoginCredentials): Promise<{ user: User; tokens: AuthTokens }> {
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post('/auth/login', {
-        email: credentials.email,
-        password: credentials.password,
-      });
+      const response = await apiClient.post('/auth/login', credentials);
+      const responseData = response.data;
+      
+      const user = responseData.user || responseData.data?.user;
+      const accessToken = responseData.accessToken || responseData.data?.accessToken;
+      const refreshToken = responseData.refreshToken || responseData.data?.refreshToken;
 
-      const data = response.data;
-      
-      // Handle different response formats from backend
-      let user, accessToken, refreshToken;
-      
-      if (data.data) {
-        user = data.data.user || data.data;
-        accessToken = data.data.accessToken || data.data.token;
-        refreshToken = data.data.refreshToken;
-      } else {
-        user = data.user || data;
-        accessToken = data.accessToken || data.token;
-        refreshToken = data.refreshToken;
+      if (!user || !accessToken) {
+        throw new Error('Invalid response from server');
       }
 
-      if (!accessToken) {
-        throw new Error('No access token received from server');
-      }
-      
       // Store tokens
       localStorage.setItem('accessToken', accessToken);
       if (refreshToken) {
@@ -49,10 +36,8 @@ export class AuthService {
 
       return {
         user,
-        tokens: {
-          accessToken,
-          refreshToken: refreshToken || '',
-        },
+        accessToken,
+        refreshToken: refreshToken || ''
       };
     } catch (error: any) {
       console.error('Login error:', error);
@@ -60,36 +45,16 @@ export class AuthService {
     }
   }
 
-  async register(data: RegisterData): Promise<{ user?: User; tokens?: AuthTokens; requiresVerification?: boolean; message?: string }> {
+  async register(data: RegisterData): Promise<{ user?: User; tokens?: AuthTokens; message?: string }> {
     try {
-      const requestData: any = {
+      const requestData = {
         email: data.email,
         password: data.password,
-        fullName: data.fullName,
-        role: data.role,
       };
-      
-      // Add NGO-specific fields if role is NGO
-      if (data.role === 'ngo') {
-        if (data.organizationName) requestData.organizationName = data.organizationName;
-        if (data.organizationType) requestData.organizationType = data.organizationType;
-        if (data.registrationNumber) requestData.registrationNumber = data.registrationNumber;
-        if (data.contactPerson) requestData.contactPerson = data.contactPerson;
-        if (data.phone) requestData.phone = data.phone;
-      }
 
       const response = await apiClient.post('/auth/register', requestData);
       const responseData = response.data;
       
-      // Check if email verification is required
-      if (responseData.requiresVerification || responseData.message?.includes('verify') || responseData.message?.includes('OTP')) {
-        return { 
-          requiresVerification: true,
-          message: responseData.message || 'Please verify your email to complete registration'
-        };
-      }
-      
-      // If registration is complete (no verification required)
       if (responseData.user || responseData.data?.user) {
         const user = responseData.user || responseData.data?.user;
         const accessToken = responseData.accessToken || responseData.data?.accessToken;
@@ -113,7 +78,7 @@ export class AuthService {
         }
       }
 
-      return { requiresVerification: true };
+      throw new Error('Registration failed. Please try again.');
     } catch (error: any) {
       console.error('Registration error:', error);
       throw new Error(handleApiError(error));
@@ -212,85 +177,73 @@ export class AuthService {
     }
   }
 
-  async completeProfile(profileData: any): Promise<User> {
+  async completeProfile(profileData: ProfileData): Promise<User> {
     try {
-      // Base request data common to both roles
-      const baseData = {
-        phone: profileData.basicInfo.contact,
-        address: profileData.address.fullAddress,
-        city: profileData.address.city,
-        state: profileData.address.state,
-        zipCode: profileData.address.zipCode,
-        description: profileData.additionalDetails.description,
-        role: profileData.role // Include role in the request
-      };
-
-      // Add role-specific fields
-      const requestData: ProfileUpdateData = profileData.role === 'donor' 
-        ? {
-            ...baseData,
-            fullName: profileData.basicInfo.name
-          }
-        : {
-            ...baseData,
-            organizationName: profileData.basicInfo.name,
-            organizationType: 'NGO',
-            contactPerson: profileData.basicInfo.name
-          };
-
-      // Log the request data for debugging
-      console.log('Profile completion request data:', requestData);
-
-      const response = await apiClient.put('/user/profile', requestData);
-      const user = response.data.data || response.data.user || response.data;
-      
-      // Ensure the user object has the correct role and profileCompleted status
-      const updatedUser = {
-        ...user,
-        role: profileData.role,
-        profileCompleted: true
-      };
-      
-      // Update localStorage with the complete user data
-      localStorage.setItem('byte2bite_current_user', JSON.stringify(updatedUser));
-      
-      return updatedUser;
-    } catch (error) {
+      console.log('Sending profile data:', profileData); // Debug log
+      const response = await apiClient.put('/user/profile', profileData);
+      return response.data;
+    } catch (error: any) {
       console.error('Complete profile failed:', error);
+      if (error.response) {
+        console.error('Error response:', error.response.data); // Debug log
+      }
       throw error;
     }
   }
 
-  async uploadProfilePicture(file: File): Promise<{ profilePictureUrl: string }> {
+  async uploadProfilePicture(file: File): Promise<UploadResponse> {
     try {
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No access token found');
-      }
-
       const formData = new FormData();
       formData.append('profilePicture', file);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://byte2bite-backend.onrender.com/api/v1'}/user/upload/profile-picture`, {
-        method: 'POST',
+      const response = await apiClient.post('/user/upload/profile-picture', formData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
         },
-        body: formData,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Profile picture upload failed');
-      }
-
-      const data = await response.json();
-      return {
-        profilePictureUrl: data.profilePictureUrl || data.data?.profilePictureUrl || data.url || data.data?.url
-      };
+      return response.data;
     } catch (error: any) {
-      console.error('Upload profile picture error:', error);
-      throw new Error(handleApiError(error));
+      console.error('Profile picture upload failed:', error);
+      throw error;
+    }
+  }
+
+  async uploadCertificate(file: File): Promise<UploadResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('certificate', file);
+
+      const response = await apiClient.post('/user/upload/certificate', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Certificate upload failed:', error);
+      throw error;
+    }
+  }
+
+  async getProfile(): Promise<ProfileResponse> {
+    try {
+      const response = await apiClient.get('/user/profile');
+      return response.data;
+    } catch (error: any) {
+      console.error('Get profile failed:', error);
+      throw error;
+    }
+  }
+
+  async deleteAccount(): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await apiClient.delete('/user/del-account');
+      return response.data;
+    } catch (error: any) {
+      console.error('Delete account failed:', error);
+      throw error;
     }
   }
 

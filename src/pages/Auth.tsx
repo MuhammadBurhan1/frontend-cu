@@ -27,14 +27,8 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<'donor' | 'ngo'>('donor');
   const [formData, setFormData] = useState({
-    fullName: '',
     email: '',
     password: '',
-    organizationName: '',
-    organizationType: '',
-    registrationNumber: '',
-    contactPerson: '',
-    phone: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -97,103 +91,38 @@ const Auth = () => {
         };
         
         try {
-          await login(credentials);
+          const user = await login(credentials);
           
-          // Redirect based on role after successful login
-          const user = JSON.parse(localStorage.getItem('byte2bite_current_user') || '{}');
-          if (user.profileCompleted) {
+          // Check if profile is completed
+          if (!user.profileCompleted) {
+            // Redirect to profile completion page
+            navigate('/complete-profile');
+          } else {
+            // Redirect to appropriate dashboard based on role
             const redirectPath = user.role === 'donor' ? '/donor' : '/ngo';
             navigate(redirectPath);
-          } else {
-            navigate('/complete-profile');
           }
         } catch (loginError: any) {
-          // Handle specific login errors
-          if (loginError.message.includes('verify') || loginError.message.includes('email')) {
-            setError('Your email address is not verified yet. Please check your email for a verification code to activate your account before logging in.');
-          } else {
-            setError(loginError.message || 'Login failed. Please check your credentials.');
-          }
+          setError(loginError.message || 'Login failed. Please check your credentials.');
         }
       } else {
-        // Validation for registration
-        if (!formData.fullName.trim()) {
-          setError('Full name is required');
-          return;
-        }
-
-        if (role === 'ngo') {
-          if (!formData.organizationName.trim()) {
-            setError('Organization name is required for NGOs');
-            return;
-          }
-        }
-
         const registerData: RegisterData = {
-          fullName: formData.fullName,
           email: formData.email,
           password: formData.password,
-          role,
-          ...(role === 'ngo' && {
-            organizationName: formData.organizationName,
-            organizationType: formData.organizationType,
-            registrationNumber: formData.registrationNumber,
-            contactPerson: formData.contactPerson,
-            phone: formData.phone,
-          }),
         };
 
         try {
-          // Step 1: Register the user
           const result = await register(registerData);
-          
-          if (result.requiresVerification) {
-            // Step 2: Send OTP to the registered email
-            try {
-              await sendOTP(formData.email);
-              
-              // Show success message and redirect to OTP verification
-              setSuccess('Account created successfully! Sending verification code to your email...');
-              
-              setTimeout(() => {
-                navigate('/verify-otp', { 
-                  state: { 
-                    email: formData.email,
-                    role: role,
-                    message: 'Please check your email for a verification code to activate your account.'
-                  } 
-                });
-              }, 2000);
-              
-            } catch (otpError: any) {
-              console.error('OTP sending failed:', otpError);
-              // Even if OTP fails, still redirect to verification page
-              navigate('/verify-otp', { 
-                state: { 
-                  email: formData.email,
-                  role: role,
-                  message: 'Account created! Please check your email for a verification code. If you don\'t receive it, you can request a new one.'
-                } 
-              });
-            }
-          } else if (result.user) {
-            // If no verification required, redirect to profile completion or dashboard
-            if (result.user.profileCompleted) {
-              const redirectPath = role === 'donor' ? '/donor' : '/ngo';
-              navigate(redirectPath);
-            } else {
-              navigate('/complete-profile');
-            }
-          }
+          setSuccess('Account created successfully! Please log in.');
+          setIsLogin(true);
         } catch (registerError: any) {
           setError(registerError.message || 'Registration failed. Please try again.');
         }
       }
     } catch (error: any) {
       setError(error.message || 'An error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   const toggleMode = () => {
@@ -201,14 +130,8 @@ const Auth = () => {
     setError('');
     setSuccess('');
     setFormData({
-      fullName: '',
       email: '',
       password: '',
-      organizationName: '',
-      organizationType: '',
-      registrationNumber: '',
-      contactPerson: '',
-      phone: ''
     });
   };
 
@@ -289,50 +212,7 @@ const Auth = () => {
                   : 'Fill in your information to get started'
                 }
               </p>
-              {!isLogin && (
-                <div className="mt-3 flex items-center justify-center text-sm text-emerald-600">
-                  <Mail className="w-4 h-4 mr-2" />
-                  <span>We'll send a verification code to your email</span>
-                </div>
-              )}
             </div>
-
-            {/* Role Selection for Registration */}
-            {!isLogin && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  I am registering as:
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setRole('donor')}
-                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                      role === 'donor'
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <User className="w-6 h-6 mx-auto mb-2" />
-                    <div className="font-medium">Food Donor</div>
-                    <div className="text-xs mt-1">Restaurant, Cafe, Business</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole('ngo')}
-                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                      role === 'ngo'
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <Building2 className="w-6 h-6 mx-auto mb-2" />
-                    <div className="font-medium">NGO</div>
-                    <div className="text-xs mt-1">Non-Profit Organization</div>
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -345,124 +225,6 @@ const Auth = () => {
                   transition={{ duration: 0.3 }}
                   className="space-y-4"
                 >
-                  {/* Full Name field for signup */}
-                  {!isLogin && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Full Name
-                      </label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                        <input
-                          type="text"
-                          name="fullName"
-                          value={formData.fullName}
-                          onChange={handleInputChange}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                          placeholder="Enter your full name"
-                          required
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Organization fields for NGO signup */}
-                  {!isLogin && role === 'ngo' && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Organization Name
-                        </label>
-                        <div className="relative">
-                          <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                          <input
-                            type="text"
-                            name="organizationName"
-                            value={formData.organizationName}
-                            onChange={handleInputChange}
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                            placeholder="Enter organization name"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Organization Type
-                          </label>
-                          <select
-                            name="organizationType"
-                            value={formData.organizationType}
-                            onChange={handleInputChange}
-                            className="w-full px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                          >
-                            <option value="">Select type</option>
-                            <option value="food_bank">Food Bank</option>
-                            <option value="shelter">Shelter</option>
-                            <option value="community_kitchen">Community Kitchen</option>
-                            <option value="charity">Charity</option>
-                            <option value="other">Other</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Registration Number
-                          </label>
-                          <div className="relative">
-                            <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input
-                              type="text"
-                              name="registrationNumber"
-                              value={formData.registrationNumber}
-                              onChange={handleInputChange}
-                              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                              placeholder="e.g., 1234/2021"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Contact Person
-                          </label>
-                          <div className="relative">
-                            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input
-                              type="text"
-                              name="contactPerson"
-                              value={formData.contactPerson}
-                              onChange={handleInputChange}
-                              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                              placeholder="Contact person"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Phone Number
-                          </label>
-                          <div className="relative">
-                            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input
-                              type="tel"
-                              name="phone"
-                              value={formData.phone}
-                              onChange={handleInputChange}
-                              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                              placeholder="Phone number"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
                   {/* Email */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -480,12 +242,6 @@ const Auth = () => {
                         required
                       />
                     </div>
-                    {!isLogin && (
-                      <p className="text-xs text-gray-500 mt-2 flex items-center">
-                        <Send className="w-3 h-3 mr-1" />
-                        We'll send a verification code to this email
-                      </p>
-                    )}
                   </div>
 
                   {/* Password */}
@@ -533,22 +289,6 @@ const Auth = () => {
                     </div>
                   )}
 
-                  {/* Email Verification Notice for Registration */}
-                  {!isLogin && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                      <div className="flex items-start">
-                        <Mail className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <h4 className="text-sm font-medium text-blue-900 mb-1">Email Verification Required</h4>
-                          <p className="text-sm text-blue-700">
-                            After creating your account, we'll automatically send a verification code to your email. 
-                            You'll need to verify your email before you can start using the platform.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Error/Success message */}
                   {error && (
                     <motion.div
@@ -581,17 +321,14 @@ const Auth = () => {
                     {isLoading ? (
                       <>
                         <Loader className="animate-spin h-5 w-5 mr-2" />
-                        {isLogin ? 'Signing In...' : 'Creating Account & Sending Code...'}
+                        {isLogin ? 'Signing In...' : 'Creating Account...'}
                       </>
                     ) : (
                       <>
                         {isLogin ? (
                           'Sign In'
                         ) : (
-                          <>
-                            <Send className="w-4 h-4 mr-2" />
-                            Create Account & Send Code
-                          </>
+                          'Create Account'
                         )}
                       </>
                     )}

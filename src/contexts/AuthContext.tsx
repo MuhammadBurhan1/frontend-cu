@@ -1,16 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import { otpService } from '../services/otpService';
-import type { User, LoginCredentials, RegisterData } from '../types';
+import type { User, LoginCredentials, RegisterData, ProfileData, UploadResponse, ProfileResponse } from '../types';
 
 interface AuthContextType {
   user: User | null;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (data: RegisterData) => Promise<{ requiresVerification?: boolean; message?: string }>;
+  login: (credentials: LoginCredentials) => Promise<User>;
+  register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
-  completeProfile: (profileData: any) => Promise<User>;
-  uploadProfilePicture: (file: File) => Promise<{ profilePictureUrl: string }>;
+  completeProfile: (profileData: ProfileData) => Promise<User>;
+  uploadProfilePicture: (file: File) => Promise<UploadResponse>;
+  uploadCertificate: (file: File) => Promise<UploadResponse>;
+  getProfile: () => Promise<ProfileResponse>;
+  deleteAccount: () => Promise<{ success: boolean; message: string }>;
   getDashboardOverview: () => Promise<any>;
   sendOTP: (email: string) => Promise<void>;
   verifyOTP: (email: string, otp: string) => Promise<{ user?: User; tokens?: any }>;
@@ -53,11 +56,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
   }, []);
 
-  const login = async (credentials: LoginCredentials): Promise<void> => {
+  const login = async (credentials: LoginCredentials): Promise<User> => {
     try {
       setIsLoading(true);
-      const { user: loggedInUser } = await authService.login(credentials);
-      setUser(loggedInUser);
+      const result = await authService.login(credentials);
+      setUser(result.user);
+      localStorage.setItem('byte2bite_current_user', JSON.stringify(result.user));
+      return result.user;
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -66,27 +71,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (data: RegisterData): Promise<{ requiresVerification?: boolean; message?: string }> => {
+  const register = async (data: RegisterData): Promise<void> => {
     try {
       setIsLoading(true);
       const result = await authService.register(data);
       
-      if (result.requiresVerification) {
-        // Don't set user yet - they need to verify email first
-        return { 
-          requiresVerification: true,
-          message: result.message 
-        };
-      } else if (result.user) {
-        // If no verification required, set user
-        // Ensure isVerified is explicitly set based on backend response or assumed false
-        const newUser = { ...result.user, isVerified: result.user.isVerified ?? false };
-        setUser(newUser);
-        localStorage.setItem('byte2bite_current_user', JSON.stringify(newUser));
-        return {};
+      if (result.user) {
+        setUser(result.user);
+        localStorage.setItem('byte2bite_current_user', JSON.stringify(result.user));
       }
-      
-      return { requiresVerification: true };
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
@@ -109,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(updatedUser);
   };
 
-  const completeProfile = async (profileData: any): Promise<User> => {
+  const completeProfile = async (profileData: ProfileData): Promise<User> => {
     try {
       const updatedUser = await authService.completeProfile(profileData);
       // Add profileCompleted flag to the user object
@@ -123,21 +116,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const uploadProfilePicture = async (file: File): Promise<{ profilePictureUrl: string }> => {
+  const uploadProfilePicture = async (file: File): Promise<UploadResponse> => {
     try {
+      setIsLoading(true);
       const result = await authService.uploadProfilePicture(file);
-      
-      // Update user with new profile picture
       if (user) {
-        const updatedUser = { ...user, avatar: result.profilePictureUrl };
+        const updatedUser = { ...user, avatar: result.url };
         setUser(updatedUser);
         localStorage.setItem('byte2bite_current_user', JSON.stringify(updatedUser));
       }
-      
       return result;
     } catch (error) {
       console.error('Upload profile picture failed:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const uploadCertificate = async (file: File): Promise<UploadResponse> => {
+    try {
+      setIsLoading(true);
+      return await authService.uploadCertificate(file);
+    } catch (error) {
+      console.error('Upload certificate failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getProfile = async (): Promise<ProfileResponse> => {
+    try {
+      setIsLoading(true);
+      return await authService.getProfile();
+    } catch (error) {
+      console.error('Get profile failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteAccount = async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      setIsLoading(true);
+      const result = await authService.deleteAccount();
+      setUser(null);
+      return result;
+    } catch (error) {
+      console.error('Delete account failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -202,6 +233,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateUser,
     completeProfile,
     uploadProfilePicture,
+    uploadCertificate,
+    getProfile,
+    deleteAccount,
     getDashboardOverview,
     sendOTP,
     verifyOTP,

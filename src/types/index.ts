@@ -4,7 +4,7 @@ export interface User {
   _id: string;
   fullName: string;
   email: string;
-  role: 'donor' | 'ngo';
+  role: 'contributor' | 'ngo';
   avatar?: string;
   isEmailVerified: boolean;
   organizationName?: string;
@@ -122,21 +122,8 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
-  fullName: string;
   email: string;
   password: string;
-  role: 'donor' | 'ngo';
-  organizationName?: string;
-  organizationType?: string;
-  registrationNumber?: string;
-  contactPerson?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  website?: string;
-  description?: string;
 }
 
 export interface ContributionFormData {
@@ -171,7 +158,7 @@ export interface ProfileUpdateData {
   phone?: string;
   website?: string;
   description?: string;
-  role?: 'donor' | 'ngo';
+  role?: 'contributor' | 'ngo';
 }
 
 export interface ApiFilters {
@@ -296,4 +283,63 @@ export interface SearchFilters {
   isVegetarian?: boolean;
   isVegan?: boolean;
   isUrgent?: boolean;
+}
+
+export interface ProfileData {
+  role: 'contributor' | 'ngo';
+  basicInfo: {
+    name: string;
+    profilePicture: string;
+    contact: string;
+    alternateContact: string;
+  };
+  address: {
+    country: string;
+    state: string;
+    city: string;
+    zipCode: string;
+    fullAddress: string;
+    coordinates: {
+      latitude: number;
+      longitude: number;
+    };
+  };
+  additionalDetails: {
+    description: string;
+  };
+  ngoSpecific?: {
+    ngoDetails: {
+      registrationNumber: string;
+      ntnNumber: string;
+      certificateURL: string;
+    };
+  };
+}
+
+export interface ProfileResponse {
+  success: boolean;
+  message: string;
+  data: ProfileData;
+}
+
+export interface UploadResponse {
+  success: boolean;
+  message: string;
+  url: string;
+}
+
+export interface UserFilters {
+  role?: 'contributor' | 'ngo';
+  city?: string;
+  state?: string;
+  organizationType?: string;
+  isVerified?: boolean;
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  allowedRoles?: ('contributor' | 'ngo')[];
 }
