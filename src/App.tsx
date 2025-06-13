@@ -9,8 +9,8 @@ import Auth from './pages/Auth';
 import OTPVerification from './pages/OTPVerification';
 import ResetPassword from './pages/ResetPassword';
 import ProfileCompletion from './pages/ProfileCompletion';
-import DonorDashboard from './pages/DonorDashboard.tsx';
-import NGODashboard from './pages/NGODashboard.tsx';
+import ContributorDashboard from './pages/ContributorDashboard';
+import NGODashboard from './pages/NGODashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ImpactTracking from './pages/ImpactTracking';
 import Footer from './components/Footer';
@@ -40,10 +40,10 @@ function App() {
                 } 
               />
               <Route 
-                path="/donor" 
+                path="/contributor" 
                 element={
-                  <ProtectedRoute allowedRoles={['donor']}>
-                    <DonorDashboard />
+                  <ProtectedRoute allowedRoles={['contributor']}>
+                    <ContributorDashboard />
                   </ProtectedRoute>
                 } 
               />

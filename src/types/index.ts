@@ -2,9 +2,11 @@
 
 export interface User {
   _id: string;
+  id: string;
   fullName: string;
+  name: string;
   email: string;
-  role: 'contributor' | 'ngo';
+  role: 'contributor' | 'ngo' | 'admin';
   avatar?: string;
   isEmailVerified: boolean;
   organizationName?: string;
@@ -341,5 +343,18 @@ export interface UserFilters {
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ('contributor' | 'ngo')[];
+  allowedRoles?: ('contributor' | 'ngo' | 'admin')[];
+}
+
+export interface Donation {
+  id: string;
+  donorId: string;
+  donor: string;
+  foodType: string;
+  quantity: string;
+  expiryDate: string;
+  pickupTime: string;
+  status: 'Available' | 'Accepted' | 'Completed' | 'Expired';
+  createdAt: string;
+  updatedAt: string;
 }

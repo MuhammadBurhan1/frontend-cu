@@ -55,32 +55,32 @@ export class AuthService {
       const response = await apiClient.post('/auth/register', requestData);
       const responseData = response.data;
       
-      if (responseData.user || responseData.data?.user) {
-        const user = responseData.user || responseData.data?.user;
-        const accessToken = responseData.accessToken || responseData.data?.accessToken;
-        const refreshToken = responseData.refreshToken || responseData.data?.refreshToken;
+      // Log the full response data for debugging
+      console.log('Registration response:', responseData);
+      
+      // Check if the response indicates success
+      if (responseData.success && responseData.data) {
+        const user = responseData.data;
         
-        if (accessToken) {
-          // Store tokens
-          localStorage.setItem('accessToken', accessToken);
-          if (refreshToken) {
-            localStorage.setItem('refreshToken', refreshToken);
-          }
-          localStorage.setItem('byte2bite_current_user', JSON.stringify(user));
+        // Store user data
+        localStorage.setItem('byte2bite_current_user', JSON.stringify(user));
 
-          return {
-            user,
-            tokens: {
-              accessToken,
-              refreshToken: refreshToken || '',
-            },
-          };
-        }
+        return {
+          user,
+          message: responseData.message || 'Registration successful'
+        };
       }
 
-      throw new Error('Registration failed. Please try again.');
+      throw new Error(responseData.message || 'Registration failed. Please try again.');
     } catch (error: any) {
       console.error('Registration error:', error);
+      if (error.response) {
+        const { status, data } = error.response;
+        if (status === 409) {
+          throw new Error('User with this email already exists.');
+        }
+        throw new Error(data?.message || handleApiError(error));
+      }
       throw new Error(handleApiError(error));
     }
   }

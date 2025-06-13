@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Utensils, Heart, Users, BarChart, LogOut, User } from 'lucide-react';
+import { Utensils, Heart, Users, BarChart, LogOut, User, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
@@ -35,9 +35,9 @@ const Navbar = () => {
             {isAuthenticated && user ? (
               <>
                 {/* Navigation based on user role */}
-                {user.role === 'donor' && (
-                  <Link to="/donor" className="flex items-center space-x-1 hover:text-emerald-200">
-                    <Heart className="h-5 w-5" />
+                {user.role === 'contributor' && (
+                  <Link to="/contributor" className="flex items-center space-x-1 hover:text-emerald-200">
+                    <LayoutDashboard className="w-5 h-5" />
                     <span>Dashboard</span>
                   </Link>
                 )}

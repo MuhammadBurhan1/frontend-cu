@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ('donor' | 'ngo')[];
+  allowedRoles?: ('contributor' | 'ngo')[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
@@ -37,13 +37,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   // If user has completed profile AND is verified, and trying to access profile completion or OTP verification page
   if (user.profileCompleted && user.isVerified && 
       (location.pathname === '/complete-profile' || location.pathname === '/otp-verification')) {
-    const redirectPath = user.role === 'donor' ? '/donor' : '/ngo';
+    const redirectPath = user.role === 'contributor' ? '/contributor' : '/ngo';
     return <Navigate to={redirectPath} replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role as any)) {
     // Redirect to appropriate dashboard based on user role
-    const redirectPath = user.role === 'donor' ? '/donor' : '/ngo';
+    const redirectPath = user.role === 'contributor' ? '/contributor' : '/ngo';
     return <Navigate to={redirectPath} replace />;
   }
 

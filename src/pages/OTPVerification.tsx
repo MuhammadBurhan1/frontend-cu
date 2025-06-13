@@ -24,14 +24,15 @@ const OTPVerification = () => {
   const [success, setSuccess] = useState('');
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
   const [canResend, setCanResend] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
 
-  const { updateUser } = useAuth();
+  const { updateUser, verifyOTP } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
   // Get email from navigation state
   const email = location.state?.email || '';
-  const userRole = location.state?.role || 'donor';
+  const userRole = location.state?.role || 'contributor';
 
   useEffect(() => {
     if (!email) {
@@ -76,7 +77,7 @@ const OTPVerification = () => {
 
     // Auto-submit when all fields are filled
     if (newOtp.every(digit => digit !== '') && newOtp.join('').length === 6) {
-      handleVerifyOTP(newOtp.join(''));
+      handleVerification();
     }
   };
 
@@ -93,67 +94,30 @@ const OTPVerification = () => {
     if (pastedData.length === 6) {
       const newOtp = pastedData.split('');
       setOtp(newOtp);
-      handleVerifyOTP(pastedData);
+      handleVerification();
     }
   };
 
-  const handleVerifyOTP = async (otpCode?: string) => {
-    const otpToVerify = otpCode || otp.join('');
-    
-    if (otpToVerify.length !== 6) {
-      setError('Please enter the complete 6-digit code');
+  const handleVerification = async () => {
+    if (!email) {
+      setError('Email not found. Please try logging in again.');
       return;
     }
 
-    setIsLoading(true);
-    setError('');
-
     try {
-      const response = await otpService.verifyOTP({
-        email,
-        otp: otpToVerify
-      });
-
-      if (response.success) {
-        setSuccess('Email verified successfully! Redirecting...');
-        
-        // If verification returns user data and tokens, update auth state
-        if (response.data) {
-          const { user, accessToken, refreshToken } = response.data;
-          
-          // Store tokens
-          localStorage.setItem('accessToken', accessToken);
-          if (refreshToken) {
-            localStorage.setItem('refreshToken', refreshToken);
-          }
-          localStorage.setItem('byte2bite_current_user', JSON.stringify(user));
-          
-          // Update auth context
-          updateUser(user);
-          
-          // Redirect to appropriate dashboard or profile completion
-          setTimeout(() => {
-            if (user.profileCompleted) {
-              const redirectPath = user.role === 'donor' ? '/donor' : '/ngo';
-              navigate(redirectPath);
-            } else {
-              navigate('/complete-profile');
-            }
-          }, 2000);
-        } else {
-          // If no user data returned, redirect to login
-          setTimeout(() => {
-            navigate('/auth', { 
-              state: { 
-                message: 'Email verified successfully! Please log in to continue.',
-                email 
-              } 
-            });
-          }, 2000);
-        }
+      setIsLoading(true);
+      setError('');
+      const otpString = otp.join('');
+      const result = await verifyOTP(email, otpString);
+      
+      if (result.user) {
+        setIsVerified(true);
+        // Redirect to appropriate dashboard based on role
+        const redirectPath = result.user.role === 'contributor' ? '/contributor' : '/ngo';
+        navigate(redirectPath);
       }
     } catch (error: any) {
-      setError(error.message || 'Invalid verification code. Please try again.');
+      setError(error.message || 'Failed to verify OTP. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -309,7 +273,7 @@ const OTPVerification = () => {
           {/* Action Buttons */}
           <div className="space-y-3">
             <button
-              onClick={() => handleVerifyOTP()}
+              onClick={handleVerification}
               disabled={isLoading || otp.some(digit => digit === '')}
               className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-3 px-4 rounded-xl hover:from-emerald-700 hover:to-emerald-800 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium"
             >

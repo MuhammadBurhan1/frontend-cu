@@ -23,13 +23,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
+// Move useAuth hook to a separate function to ensure consistent exports
+function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -80,8 +81,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(result.user);
         localStorage.setItem('byte2bite_current_user', JSON.stringify(result.user));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration failed:', error);
+      // Log the full error details for debugging
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+      }
       throw error;
     } finally {
       setIsLoading(false);
@@ -249,3 +254,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
+
+// Export useAuth as a named export
+export { useAuth };
