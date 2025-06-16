@@ -10,8 +10,8 @@ router.use((req, res, next) => {
     next();
 });
 
-//secure routes
-router.get("/otp", otpLimit ,verifyJWT, getOTP);
-router.post("/otp", verifyJWT, verifyOTP);
+// OTP routes
+router.get("/otp", otpLimit, getOTP);  // GET /verify/otp with method=email
+router.post("/otp", verifyOTP);        // POST /verify/otp with otp in body
 
 export default router;

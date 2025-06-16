@@ -2,7 +2,7 @@ import { apiClient, handleApiError } from '../utils/api';
 import type { User, ProfileUpdateData } from '../types';
 
 export interface UserFilters {
-  role?: 'donor' | 'ngo';
+  role?: 'contributor' | 'ngo';
   city?: string;
   state?: string;
   organizationType?: string;
@@ -84,7 +84,7 @@ export class UserService {
     }
   }
 
-  async completeProfile(data: ProfileUpdateData): Promise<User> {
+  async completeProfile(data: ProfileUpdateData): Promise<{ user: User; redirectPath: string }> {
     try {
       // Based on your backend route: PUT /api/v1/user/profile
       const response = await apiClient.put<User>('/user/profile', data);
@@ -93,7 +93,15 @@ export class UserService {
       const userData = response.data.data || response.data.user || response.data;
       localStorage.setItem('byte2bite_current_user', JSON.stringify(userData));
       
-      return userData;
+      // Determine redirect path based on user role
+      let redirectPath = '/dashboard';
+      if (userData.role === 'contributor') {
+        redirectPath = '/contributor';
+      } else if (userData.role === 'ngo') {
+        redirectPath = '/ngo';
+      }
+      
+      return { user: userData, redirectPath };
     } catch (error) {
       throw new Error(handleApiError(error));
     }

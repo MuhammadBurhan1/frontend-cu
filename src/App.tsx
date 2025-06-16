@@ -29,8 +29,8 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/verify-otp" element={<OTPVerification />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/verify-otp" element={<OTPVerification />} />
               <Route 
                 path="/complete-profile" 
                 element={

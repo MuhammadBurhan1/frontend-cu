@@ -1,5 +1,8 @@
 import { apiClient, handleApiError } from '../utils/api';
 import type { User, AuthTokens, LoginCredentials, RegisterData, ProfileUpdateData, ProfileData, UploadResponse, ProfileResponse } from '../types';
+import axios from 'axios';
+
+const API_URL = 'https://byte2bite-backend.onrender.com/api';
 
 export interface AuthResponse {
   user: User;
@@ -177,11 +180,21 @@ export class AuthService {
     }
   }
 
-  async completeProfile(profileData: ProfileData): Promise<User> {
+  async completeProfile(profileData: ProfileData): Promise<{ user: User; redirectPath: string }> {
     try {
       console.log('Sending profile data:', profileData); // Debug log
       const response = await apiClient.put('/user/profile', profileData);
-      return response.data;
+      const userData = response.data.data || response.data.user || response.data;
+      
+      // Determine redirect path based on user role
+      let redirectPath = '/dashboard';
+      if (userData.role === 'contributor') {
+        redirectPath = '/contributor';
+      } else if (userData.role === 'ngo') {
+        redirectPath = '/ngo';
+      }
+      
+      return { user: userData, redirectPath };
     } catch (error: any) {
       console.error('Complete profile failed:', error);
       if (error.response) {
@@ -259,19 +272,30 @@ export class AuthService {
 
   async forgotPassword(email: string): Promise<void> {
     try {
-      await apiClient.post('/auth/req-reset-password', { email });
+      const response = await apiClient.post('/auth/req-reset-password', { email });
+      return response.data;
     } catch (error: any) {
-      throw new Error(handleApiError(error));
+      if (error.response?.status === 404) {
+        throw new Error('No account found with this email address.');
+      }
+      if (error.response?.status === 429) {
+        throw new Error('Too many attempts. Please try again later.');
+      }
+      throw new Error(error.response?.data?.message || 'Failed to send reset instructions. Please try again.');
     }
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
     try {
-      await apiClient.post(`/auth/reset-password/${token}`, {
-        newPassword,
+      const response = await apiClient.post(`/auth/reset-password/${token}`, {
+        password: newPassword
       });
+      return response.data;
     } catch (error: any) {
-      throw new Error(handleApiError(error));
+      if (error.response?.status === 400) {
+        throw new Error('Invalid or expired reset token. Please request a new password reset.');
+      }
+      throw new Error(error.response?.data?.message || 'Failed to reset password. Please try again.');
     }
   }
 

@@ -29,14 +29,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   }
 
   // If user has completed profile but not verified, and not on OTP verification page
-  if (user.profileCompleted && !user.isVerified && location.pathname !== '/otp-verification') {
+  if (user.profileCompleted && !user.isVerified && location.pathname !== '/verify-otp') {
     // Pass email to OTP verification page if available
-    return <Navigate to="/otp-verification" state={{ email: user.email }} replace />;
+    return <Navigate to="/verify-otp" state={{ email: user.email }} replace />;
   }
 
   // If user has completed profile AND is verified, and trying to access profile completion or OTP verification page
   if (user.profileCompleted && user.isVerified && 
-      (location.pathname === '/complete-profile' || location.pathname === '/otp-verification')) {
+      (location.pathname === '/complete-profile' || location.pathname === '/verify-otp')) {
     const redirectPath = user.role === 'contributor' ? '/contributor' : '/ngo';
     return <Navigate to={redirectPath} replace />;
   }

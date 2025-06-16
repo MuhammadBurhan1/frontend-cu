@@ -226,8 +226,8 @@ const ProfileCompletion: React.FC = () => {
         } : undefined
       };
 
-      await completeProfile(profileData);
-      navigate('/dashboard');
+      const { redirectPath } = await completeProfile(profileData);
+      navigate(redirectPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete profile');
     } finally {

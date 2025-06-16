@@ -18,7 +18,8 @@ import {
   Globe,
   MapPin,
   Shield,
-  Send
+  Send,
+  ArrowLeft
 } from 'lucide-react';
 import type { LoginCredentials, RegisterData } from '../types';
 
@@ -290,9 +291,10 @@ const Auth = () => {
                         <button
                           type="button"
                           onClick={handleForgotPassword}
-                          className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                          className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors duration-200 flex items-center justify-end w-full"
                         >
-                          Forgot your password?
+                          <span>Forgot your password?</span>
+                          <ArrowLeft className="w-4 h-4 ml-1 transform rotate-180" />
                         </button>
                       </div>
                     )}

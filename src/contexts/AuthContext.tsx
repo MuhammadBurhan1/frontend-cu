@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
-import { otpService } from '../services/otpService';
+import { otpService, type VerificationResponse } from '../services/otpService';
 import type { User, LoginCredentials, RegisterData, ProfileData, UploadResponse, ProfileResponse } from '../types';
 
 interface AuthContextType {
@@ -9,14 +9,14 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
-  completeProfile: (profileData: ProfileData) => Promise<User>;
+  completeProfile: (profileData: ProfileData) => Promise<{ user: User; redirectPath: string }>;
   uploadProfilePicture: (file: File) => Promise<UploadResponse>;
   uploadCertificate: (file: File) => Promise<UploadResponse>;
   getProfile: () => Promise<ProfileResponse>;
   deleteAccount: () => Promise<{ success: boolean; message: string }>;
   getDashboardOverview: () => Promise<any>;
   sendOTP: (email: string) => Promise<void>;
-  verifyOTP: (email: string, otp: string) => Promise<{ user?: User; tokens?: any }>;
+  verifyOTP: (email: string, otp: string) => Promise<VerificationResponse>;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
@@ -35,6 +35,7 @@ function useAuth() {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -107,14 +108,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(updatedUser);
   };
 
-  const completeProfile = async (profileData: ProfileData): Promise<User> => {
+  const completeProfile = async (profileData: ProfileData): Promise<{ user: User; redirectPath: string }> => {
     try {
-      const updatedUser = await authService.completeProfile(profileData);
+      const { user: updatedUser, redirectPath } = await authService.completeProfile(profileData);
       // Add profileCompleted flag to the user object
       const userWithProfileCompleted = { ...updatedUser, profileCompleted: true };
       setUser(userWithProfileCompleted);
       localStorage.setItem('byte2bite_current_user', JSON.stringify(userWithProfileCompleted));
-      return userWithProfileCompleted;
+      return { user: userWithProfileCompleted, redirectPath };
     } catch (error) {
       console.error('Complete profile failed:', error);
       throw error;
@@ -188,45 +189,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const sendOTP = async (email: string): Promise<void> => {
     try {
-      // Note: Based on your backend, OTP requires authentication
-      // This might need to be adjusted based on your actual flow
-      // For email verification during registration, you might need a different endpoint
+      setIsLoading(true);
+      setError(null);
       await otpService.sendOTP({ email, method: 'email' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Send OTP failed:', error);
+      setError(error.message || 'Failed to send OTP');
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const verifyOTP = async (email: string, otp: string): Promise<{ user?: User; tokens?: any }> => {
+  const verifyOTP = async (email: string, otp: string): Promise<VerificationResponse> => {
     try {
+      setIsLoading(true);
+      setError(null);
       const result = await otpService.verifyOTP({ email, otp });
       
-      if (result.data && result.data.user) {
-        const { user: verifiedUser, accessToken, refreshToken } = result.data;
-        
-        // Explicitly set isVerified to true upon successful OTP verification
-        const finalUser = { ...verifiedUser, isVerified: true };
-
-        // Store tokens
-        localStorage.setItem('accessToken', accessToken);
-        if (refreshToken) {
-          localStorage.setItem('refreshToken', refreshToken);
+      if (result.data) {
+        setUser(result.data.user);
+        localStorage.setItem('accessToken', result.data.accessToken);
+        if (result.data.refreshToken) {
+          localStorage.setItem('refreshToken', result.data.refreshToken);
         }
-        localStorage.setItem('byte2bite_current_user', JSON.stringify(finalUser));
-        
-        setUser(finalUser);
-        
-        return {
-          user: finalUser,
-          tokens: { accessToken, refreshToken }
-        };
+        localStorage.setItem('byte2bite_current_user', JSON.stringify(result.data.user));
+      } else {
+        throw new Error('No user data received after verification');
       }
       
-      return {};
-    } catch (error) {
+      return result;
+    } catch (error: any) {
       console.error('Verify OTP failed:', error);
+      setError(error.message || 'Failed to verify OTP');
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
