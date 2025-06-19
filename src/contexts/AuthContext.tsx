@@ -111,8 +111,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const completeProfile = async (profileData: ProfileData): Promise<{ user: User; redirectPath: string }> => {
     try {
       const { user: updatedUser, redirectPath } = await authService.completeProfile(profileData);
-      // Add profileCompleted flag to the user object
-      const userWithProfileCompleted = { ...updatedUser, profileCompleted: true };
+      // Add profileCompleted and isVerified flags to the user object
+      const userWithProfileCompleted = { 
+        ...updatedUser, 
+        profileCompleted: true,
+        isVerified: true // Set user as verified
+      };
       setUser(userWithProfileCompleted);
       localStorage.setItem('byte2bite_current_user', JSON.stringify(userWithProfileCompleted));
       return { user: userWithProfileCompleted, redirectPath };

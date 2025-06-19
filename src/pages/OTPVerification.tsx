@@ -1,91 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { otpService } from '../services/otpService';
-import { 
-  Utensils, 
-  Mail, 
-  RefreshCw, 
-  CheckCircle, 
-  AlertCircle, 
-  Loader, 
-  ArrowLeft,
-  Shield,
-  Clock,
-  Smartphone
-} from 'lucide-react';
 
 export const OTPVerification: React.FC = () => {
-  const { sendOTP, verifyOTP } = useAuth();
+  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isRequestingOTP, setIsRequestingOTP] = useState(false);
-  const [countdown, setCountdown] = useState(0);
   const [message, setMessage] = useState<string>('');
-
-  const email = location.state?.email;
+  const [isSendingOTP, setIsSendingOTP] = useState(false);
+  const [countdown, setCountdown] = useState(0);
 
   useEffect(() => {
-    if (!email) {
-      navigate('/login');
+    if (!user) {
+      navigate('/auth');
     }
-  }, [email]);
+  }, [user, navigate]);
 
+  // Countdown timer effect
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
+    let timer: number;
     if (countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
+      timer = window.setInterval(() => {
+        setCountdown(prev => prev - 1);
       }, 1000);
     }
-    return () => clearInterval(timer);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [countdown]);
 
-  const requestOTP = async () => {
-    if (!email) return;
-    
+  const handleGetOTP = async () => {
+    if (!user?.email) return;
+
     try {
-      setIsRequestingOTP(true);
+      setIsSendingOTP(true);
       setError('');
       setMessage('');
-      
-      await sendOTP(email);
-      setMessage('OTP sent successfully! Please check your email.');
-      setCountdown(60); // Start countdown
-      setOtp(Array(6).fill('')); // Clear existing OTP
-    } catch (error: any) {
-      console.error('Request OTP error:', error);
-      const errorMessage = error.message || 'Failed to send OTP. Please try again.';
-      setError(errorMessage);
-      
-      // If it's a rate limit error, set the countdown to 60 seconds
-      if (errorMessage.includes('Rate limit exceeded') || errorMessage.includes('Service temporarily unavailable')) {
-        setCountdown(60);
-      } else {
-        setCountdown(0); // Reset countdown on other errors
-      }
-    } finally {
-      setIsRequestingOTP(false);
-    }
-  };
 
-  const handleResendOTP = async () => {
-    if (countdown > 0) return;
-    if (!email) {
-      setError('Email address not found. Please try logging in again.');
-      navigate('/login');
-      return;
+      const response = await otpService.sendOTP({
+        email: user.email,
+        method: 'email'
+      });
+
+      if (response.success) {
+        setMessage('OTP sent successfully! Please check your email.');
+        setCountdown(60); // Start 60-second countdown
+      } else {
+        throw new Error(response.message || 'Failed to send OTP');
+      }
+    } catch (error: any) {
+      console.error('Send OTP error:', error);
+      setError(error.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setIsSendingOTP(false);
     }
-    await requestOTP();
   };
 
   const handleVerification = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!user) return;
 
     const otpString = otp.join('');
     if (otpString.length !== 6) {
@@ -98,26 +74,54 @@ export const OTPVerification: React.FC = () => {
       setError('');
       setMessage('');
 
-      const result = await verifyOTP(email, otpString);
-      
-      if (result?.data?.user) {
+      // Use the actual OTP verification service
+      const response = await otpService.verifyOTP({
+        email: user.email,
+        otp: otpString
+      });
+
+      // Check if verification was successful
+      if (response.success) {
+        // Update user data with verification status and new tokens
+        const updatedUser = {
+          ...user,
+          isVerified: true,
+          verificationStatus: 'verified',
+          verifiedAt: new Date().toISOString()
+        };
+
+        // Update user in context and localStorage
+        updateUser(updatedUser);
+        localStorage.setItem('byte2bite_current_user', JSON.stringify(updatedUser));
+
+        // Store new tokens if provided
+        if (response.data?.accessToken) {
+          localStorage.setItem('accessToken', response.data.accessToken);
+        }
+        if (response.data?.refreshToken) {
+          localStorage.setItem('refreshToken', response.data.refreshToken);
+        }
+
+        setMessage('Verification successful! Redirecting...');
+
         // Navigate based on user role
-        const role = result.data.user.role.toLowerCase();
+        const role = user.role?.toLowerCase();
         switch (role) {
           case 'contributor':
-            navigate('/contributor/dashboard', { replace: true });
+            navigate('/contributor', { replace: true });
             break;
           case 'ngo':
-            navigate('/ngo/dashboard', { replace: true });
+            navigate('/ngo', { replace: true });
             break;
           case 'admin':
-            navigate('/admin/dashboard', { replace: true });
+            navigate('/admin', { replace: true });
             break;
           default:
             navigate('/dashboard', { replace: true });
         }
       } else {
-        throw new Error('No user data received after verification');
+        setError(response.message || 'Verification failed');
+        setOtp(Array(6).fill('')); // Clear OTP on error
       }
     } catch (error: any) {
       console.error('Verification error:', error);
@@ -126,12 +130,6 @@ export const OTPVerification: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -161,20 +159,6 @@ export const OTPVerification: React.FC = () => {
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').slice(0, 6);
-    if (!/^\d+$/.test(pastedData)) return;
-
-    const newOtp = pastedData.split('');
-    setOtp(newOtp);
-    handleVerification(e as unknown as React.FormEvent);
-  };
-
-  const handleBackToAuth = () => {
-    navigate('/auth');
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -182,7 +166,7 @@ export const OTPVerification: React.FC = () => {
           Verify Your Email
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Enter the verification code sent to {email}
+          Enter the 6-digit code sent to your email ({user?.email})
         </p>
       </div>
 
@@ -215,7 +199,6 @@ export const OTPVerification: React.FC = () => {
                     value={digit}
                     onChange={(e) => handleOtpChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
-                    onPaste={handlePaste}
                     className="w-12 h-12 text-center text-2xl border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 ))}
@@ -231,22 +214,14 @@ export const OTPVerification: React.FC = () => {
                 {isLoading ? 'Verifying...' : 'Verify Code'}
               </button>
 
-              <div className="text-center">
-                {countdown > 0 ? (
-                  <p className="text-sm text-gray-500">
-                    Request new code in {formatTime(countdown)}
-                  </p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleResendOTP}
-                    disabled={isRequestingOTP}
-                    className="text-sm text-indigo-600 hover:text-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isRequestingOTP ? 'Sending...' : 'Get OTP'}
-                  </button>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={handleGetOTP}
+                disabled={isSendingOTP || countdown > 0}
+                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSendingOTP ? 'Sending...' : countdown > 0 ? `Resend in ${countdown}s` : 'Get OTP'}
+              </button>
             </div>
           </form>
         </div>

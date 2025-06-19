@@ -11,12 +11,26 @@ export const apiClient = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and verification
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
+    const userData = localStorage.getItem('byte2bite_current_user');
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Add verification token if user is verified
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        if (user.isVerified) {
+          config.headers['X-Verification-Token'] = 'verified';
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
     }
     
     // Log API calls in development

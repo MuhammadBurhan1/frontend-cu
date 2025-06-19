@@ -18,6 +18,45 @@ export interface ContributionResponse {
   totalCount: number;
 }
 
+export interface Location {
+  latitude: number;
+  longitude: number;
+}
+
+export interface FoodItem {
+  _id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  expirationDate: string;
+  location: Location;
+  status: 'available' | 'accepted' | 'completed';
+  contributor: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AddFoodRequest {
+  foodId: string;
+  name: string;
+  description: string;
+  quantity: number;
+  expirationDate: string;
+  location: Location;
+}
+
+export interface UpdateStatusRequest {
+  contribution: string;
+  status: 'available' | 'accepted' | 'completed';
+}
+
+export interface DashboardOverview {
+  totalContributions: number;
+  activeContributions: number;
+  completedContributions: number;
+  recentContributions: FoodItem[];
+}
+
 export class ContributionService {
   async createContribution(data: ContributionFormData): Promise<Contribution> {
     try {
@@ -167,6 +206,84 @@ export class ContributionService {
   }> {
     try {
       const response = await apiClient.get(`/contributor/dashboard/analytics?timeRange=${timeRange}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  }
+
+  async getDashboardOverview(): Promise<DashboardOverview> {
+    try {
+      // GET request with no body parameters
+      const response = await apiClient.get('/contributor/dashboard/overview');
+      return response.data;
+    } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  }
+
+  async addFood(data: AddFoodRequest): Promise<FoodItem> {
+    try {
+      // POST request with JSON body
+      const response = await apiClient.post('/contributor/dashboard/addfood', {
+        name: data.name,
+        description: data.description,
+        quantity: data.quantity,
+        expirationDate: data.expirationDate,
+        location: data.location
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  }
+
+  async getFoodItem(foodItemId: string): Promise<FoodItem> {
+    try {
+      // POST request with x-www-form-urlencoded body
+      const formData = new URLSearchParams();
+      formData.append('foodItem', foodItemId);
+      
+      const response = await apiClient.post('/contributor/dashboard/getfooditem', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  }
+
+  async getFoodItems(foodItemId: string): Promise<FoodItem[]> {
+    try {
+      // POST request with x-www-form-urlencoded body
+      const formData = new URLSearchParams();
+      formData.append('foodItem', foodItemId);
+      
+      const response = await apiClient.post('/contributor/dashboard/getfooditems', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  }
+
+  async updateStatus(data: UpdateStatusRequest): Promise<FoodItem> {
+    try {
+      // PATCH request with x-www-form-urlencoded body
+      const formData = new URLSearchParams();
+      formData.append('contribution', data.contribution);
+      formData.append('status', data.status);
+      
+      const response = await apiClient.patch('/contributor/dashboard/update_status', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
       return response.data;
     } catch (error) {
       throw new Error(handleApiError(error));

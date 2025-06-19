@@ -6,13 +6,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
-import OTPVerification from './pages/OTPVerification';
 import ResetPassword from './pages/ResetPassword';
 import ProfileCompletion from './pages/ProfileCompletion';
 import ContributorDashboard from './pages/ContributorDashboard';
 import NGODashboard from './pages/NGODashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ImpactTracking from './pages/ImpactTracking';
+import OTPVerification from './pages/OTPVerification';
 import Footer from './components/Footer';
 
 function App() {

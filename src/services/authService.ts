@@ -186,6 +186,10 @@ export class AuthService {
       const response = await apiClient.put('/user/profile', profileData);
       const userData = response.data.data || response.data.user || response.data;
       
+      // Update user data with profile completed flag
+      const updatedUser = { ...userData, profileCompleted: true };
+      localStorage.setItem('byte2bite_current_user', JSON.stringify(updatedUser));
+      
       // Determine redirect path based on user role
       let redirectPath = '/dashboard';
       if (userData.role === 'contributor') {
@@ -194,7 +198,7 @@ export class AuthService {
         redirectPath = '/ngo';
       }
       
-      return { user: userData, redirectPath };
+      return { user: updatedUser, redirectPath };
     } catch (error: any) {
       console.error('Complete profile failed:', error);
       if (error.response) {

@@ -226,8 +226,9 @@ const ProfileCompletion: React.FC = () => {
         } : undefined
       };
 
-      const { redirectPath } = await completeProfile(profileData);
-      navigate(redirectPath);
+      await completeProfile(profileData);
+      // Redirect to OTP verification page
+      navigate('/verify-otp');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete profile');
     } finally {

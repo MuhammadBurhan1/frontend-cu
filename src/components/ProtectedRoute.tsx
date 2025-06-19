@@ -4,13 +4,14 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ('contributor' | 'ngo')[];
+  allowedRoles?: ('contributor' | 'ngo' | 'admin')[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
+  // 1. Show loading state while auth context is initializing
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -19,34 +20,48 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     );
   }
 
+  // 2. If no user is logged in, redirect to auth page
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    if (location.pathname !== '/auth') { // Only navigate if not already on /auth
+      return <Navigate to="/auth" replace />;
+    }
+    return <>{children}</>; // If already on /auth, render its children
   }
 
-  // If user hasn't completed profile and not already on profile completion page
-  if (!user.profileCompleted && location.pathname !== '/complete-profile') {
-    return <Navigate to="/complete-profile" replace />;
+  // Determine the user's dashboard path
+  const userDashboardPath = user.role === 'contributor'
+    ? '/contributor'
+    : (user.role === 'ngo' ? '/ngo' : '/admin');
+
+  // 3. If user hasn't completed profile, redirect to profile completion page
+  if (!user.profileCompleted) {
+    if (location.pathname !== '/complete-profile') { // Only navigate if not already on /complete-profile
+      return <Navigate to="/complete-profile" replace />;
+    }
+    return <>{children}</>; // If already on /complete-profile, render its children
   }
 
-  // If user has completed profile but not verified, and not on OTP verification page
-  if (user.profileCompleted && !user.isVerified && location.pathname !== '/verify-otp') {
-    // Pass email to OTP verification page if available
-    return <Navigate to="/verify-otp" state={{ email: user.email }} replace />;
+  // 4. If user's profile is completed but not verified, redirect to OTP verification page
+  if (!user.isVerified) {
+    if (location.pathname !== '/verify-otp') { // Only navigate if not already on /verify-otp
+      return <Navigate to="/verify-otp" replace />;
+    }
+    return <>{children}</>; // If already on /verify-otp, render its children
   }
 
-  // If user has completed profile AND is verified, and trying to access profile completion or OTP verification page
-  if (user.profileCompleted && user.isVerified && 
-      (location.pathname === '/complete-profile' || location.pathname === '/verify-otp')) {
-    const redirectPath = user.role === 'contributor' ? '/contributor' : '/ngo';
-    return <Navigate to={redirectPath} replace />;
+  // 5. If user is fully onboarded and trying to access an onboarding path (e.g., /complete-profile, /verify-otp)
+  if (location.pathname === '/complete-profile' || location.pathname === '/verify-otp') {
+    return <Navigate to={userDashboardPath} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role as any)) {
-    // Redirect to appropriate dashboard based on user role
-    const redirectPath = user.role === 'contributor' ? '/contributor' : '/ngo';
-    return <Navigate to={redirectPath} replace />;
+  // 6. Check role-based access for the current route
+  // If allowedRoles are specified and the user's role is not included
+  // And they are not already on their appropriate dashboard path (this is important to avoid endless redirects)
+  if (allowedRoles && !allowedRoles.includes(user.role as any) && location.pathname !== userDashboardPath) {
+    return <Navigate to={userDashboardPath} replace />;
   }
 
+  // 7. If all checks pass and no redirection is needed, render the children component
   return <>{children}</>;
 };
 
